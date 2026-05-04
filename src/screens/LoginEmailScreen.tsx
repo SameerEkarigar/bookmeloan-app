@@ -32,6 +32,7 @@ const LoginEmailScreen = ({ navigation }: Props) => {
     try {
       const resp: any = await Post('user/send-otp', { email: email.trim() });
       const code = resp?.otp || resp?.data?.otp;
+      console.log("OTP:", code);
       setMessage('OTP sent to your email.');
       navigation.navigate('LoginOtp', {
         from: 'email',

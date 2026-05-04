@@ -54,6 +54,8 @@ const request = async <T>(
         )}`
     : api.defaults.baseURL;
 
+  console.log('[API DEBUG] =>', config.method, targetUrl);
+
   try {
     if (config.data instanceof FormData) {
       config.headers = {
@@ -77,6 +79,7 @@ const request = async <T>(
     return response;
   } catch (error: any) {
     clearTimeout(timeoutId);
+    console.log('[API ERROR]', config.method, targetUrl, error?.message, error?.code, JSON.stringify(error?.response?.data || 'NO RESPONSE'));
     const serverMessage =
       error?.response?.data?.message ||
       error?.response?.data?.error ||
