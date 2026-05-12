@@ -27,7 +27,7 @@ const LoginOtpScreen = ({ navigation, route }: Props) => {
   const [message, setMessage] = useState<string | null>(null);
   const [otpDigits, setOtpDigits] = useState<string[]>(Array(6).fill(''));
   const inputsRef = useRef<Array<TextInput | null>>([]);
-
+const DEMO_EMAIL = 'guptarishabh792@gmail.com';
   const resetTimer = useCallback(() => {
     setTimer(30);
   }, []);
@@ -78,53 +78,111 @@ const LoginOtpScreen = ({ navigation, route }: Props) => {
   const otpValue = otpDigits.join('');
   const isOtpValid = otpValue.length === 6;
 
-  const verifyOtp = async () => {
-    if (!isOtpValid) return;
-    setLoading(true);
-    setMessage(null);
-    try {
-      const payload: any = { otp: otpValue };
-      if (isEmailFlow) {
-        payload.email = contactLabel;
-      } else {
-        payload.phone = { number: contactLabel.replace(/\D/g, '') };
-      }
+const verifyOtp = async () => {
+  if (!isOtpValid) return;
+
+  setLoading(true);
+  setMessage(null);
+
+  try {
+    // ✅ DEMO ACCOUNT LOGIN
+    if (
+      contactLabel.trim().toLowerCase() === DEMO_EMAIL &&
+      otpValue === '123456'
+    ) {
+      const payload = {
+        email: DEMO_EMAIL,
+        otp: '123456',
+      };
+
       const response = await Post<{ token?: string }>(
         '/user/verify-otp',
         payload,
       );
+
       const receivedToken = (response as any)?.data?.token;
-      if (receivedToken) await setStorage('token', receivedToken);
 
-      setMessage('Verified. Redirecting...');
-      navigation.navigate('Home');
-    } catch (error: any) {
-      setMessage(error?.message || 'Invalid OTP, please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resendOtp = async () => {
-    if (timer !== 0) return;
-    setMessage(null);
-    setLoading(true);
-    try {
-      if (isEmailFlow) {
-        await Post('/user/send-otp', { email: contactLabel });
-      } else {
-        await Post('/user/send-otp', {
-          phone: { number: contactLabel.replace(/\D/g, '') },
-        });
+      if (receivedToken) {
+        await setStorage('token', receivedToken);
       }
-      resetTimer();
-      setMessage('OTP resent.');
-    } catch (error: any) {
-      setMessage(error?.message || 'Unable to resend OTP.');
-    } finally {
-      setLoading(false);
+
+      setMessage('Demo login successful.');
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
+
+      return;
     }
-  };
+
+    // ✅ NORMAL LIVE OTP FLOW
+    const payload: any = { otp: otpValue };
+
+    if (isEmailFlow) {
+      payload.email = contactLabel;
+    } else {
+      payload.phone = {
+        number: contactLabel.replace(/\D/g, ''),
+      };
+    }
+
+    const response = await Post<{ token?: string }>(
+      '/user/verify-otp',
+      payload,
+    );
+
+    const receivedToken = (response as any)?.data?.token;
+
+    if (receivedToken) {
+      await setStorage('token', receivedToken);
+    }
+
+    setMessage('Verified. Redirecting...');
+
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Home' }],
+    });
+  } catch (error: any) {
+    console.log('VERIFY OTP ERROR:', error);
+
+    setMessage(error?.message || 'Invalid OTP, please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+const resendOtp = async () => {
+  if (timer !== 0) return;
+
+  setMessage(null);
+  setLoading(true);
+
+  try {
+    let response;
+
+    if (isEmailFlow) {
+      response = await Post('/user/send-otp', {
+        email: contactLabel,
+      });
+    } else {
+      response = await Post('/user/send-otp', {
+        phone: { number: contactLabel.replace(/\D/g, '') },
+      });
+    }
+
+    console.log('Send OTP Response:', response);
+
+    resetTimer();
+    setMessage('OTP resent.');
+  } catch (error: any) {
+    console.log('Send OTP Error:', error);
+
+    setMessage(error?.message || 'Unable to resend OTP.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <SafeAreaView style={styles.safeArea}>

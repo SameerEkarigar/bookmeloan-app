@@ -53,8 +53,11 @@ const request = async <T>(
           '',
         )}`
     : api.defaults.baseURL;
-
-  console.log('[API DEBUG] =>', config.method, targetUrl);
+console.log('🔥 BASE_URL =>', api.defaults.baseURL);
+  console.log('🔥 API REQUEST =>');
+console.log('METHOD =>', config.method);
+console.log('URL =>', targetUrl);
+console.log('DATA =>', config.data);
 
   try {
     if (config.data instanceof FormData) {
@@ -68,8 +71,11 @@ const request = async <T>(
       ...config,
       url: targetUrl,
       signal: controller.signal,
-    });
-
+      
+    }
+  
+  );
+console.log('✅ API RESPONSE =>', response.data);
     if (config.showSuccessToast || config.toastMessage) {
       const message = config.toastMessage ?? (response.data as any)?.message;
       if (message) toast(message);

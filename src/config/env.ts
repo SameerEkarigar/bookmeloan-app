@@ -40,7 +40,9 @@ const API_BASE_URLS: Record<AppEnv, string> = {
   staging: 'https://api.bookmeloan.com/api/',
   //  development: 'https://api.bookmeloan.com/api/',
   development: 'https://bookmeloan.com/api/',
-  production: 'https://api.bookmeloan.com/api/',
+  // production: 'https://api.bookmeloan.com/api/',
+  production: 'https://bookmeloan.com/api/',
+
 };
 
 export const API_BASE_URL =
