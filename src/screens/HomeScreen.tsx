@@ -183,11 +183,18 @@ const HomeScreen = () => {
                 <Text style={styles.heroOfferCopy}>
                   Get flat ₹500 off your first EMI Limited time only!
                 </Text>
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   style={styles.ctaButton}
                   onPress={() => navigation.navigate('ExploreLoans')}
                 >
                   <Text style={styles.ctaText}>Apply Now</Text>
+                </TouchableOpacity> */}
+
+                    <TouchableOpacity
+                  style={styles.ctaButton}
+                  onPress={() => navigation.navigate('HomeLoanDocumentsScreen')}
+                >
+                 <Text style={styles.ctaText}>Apply Home Loan</Text>
                 </TouchableOpacity>
               </View>
               <Image
@@ -506,19 +513,23 @@ const styles = StyleSheet.create({
     color: '#EAF7F4',
     lineHeight: 20,
   },
-  ctaButton: {
-    borderRadius: 26,
-    marginVertical: 18,
-    paddingVertical: 10,
-    paddingHorizontal: 28,
-    alignSelf: 'flex-start',
-    backgroundColor: '#FBBF24',
-  },
-  ctaText: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: '800',
-  },
+ctaButton: {
+  borderRadius: 26,
+  marginVertical: 18,
+  paddingVertical: 12,
+  paddingHorizontal: 20,
+  minWidth: 170,
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: '#FBBF24',
+},
+
+ctaText: {
+  fontSize: 14,
+  color: '#fff',
+  fontWeight: '800',
+  textAlign: 'center',
+},
   heroPerson: {
     width: 200,
     height: 240,

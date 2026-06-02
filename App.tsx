@@ -38,6 +38,7 @@ import NotificationCenterScreen from './src/screens/NotificationCenterScreen';
 import ProfessionalDetailsScreen from './src/screens/ProfessionalDetailsScreen';
 import ExploreLoansScreen from './src/screens/ExploreLoansScreen';
 import ActiveLoansScreen from './src/screens/ActiveLoansScreen';
+import HomeLoanDocumentsScreen from './src/screens/HomeLoanDocumentsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -62,6 +63,10 @@ const App = () => (
             name="UploadDocuments"
             component={UploadDocumentsScreen}
           />
+            <Stack.Screen
+  name="HomeLoanDocumentsScreen"
+  component={HomeLoanDocumentsScreen}
+/>
           <Stack.Screen
             name="KycVerification"
             component={KycVerificationScreen}

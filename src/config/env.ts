@@ -38,7 +38,7 @@ export const APP_ENV: AppEnv = runtimeEnv.BOOKME_APP_ENV
 
 const API_BASE_URLS: Record<AppEnv, string> = {
   staging: 'https://api.bookmeloan.com/api/',
-  //  development: 'https://api.bookmeloan.com/api/',
+  //  development: 'http://localhost:5010/api',
   development: 'https://bookmeloan.com/api/',
   production: 'https://api.bookmeloan.com/api/',
 };

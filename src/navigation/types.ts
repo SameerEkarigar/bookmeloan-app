@@ -21,6 +21,7 @@ export type RootStackParamList = {
   Home: undefined;
   EMICalculator: undefined;
   UploadDocuments: undefined;
+   HomeLoanDocumentsScreen: undefined;
   CallbackRequest: undefined;
   TrueHomeLoan: { prefill?: LoanFormPrefill } | undefined;
   ProfessionalDetails: undefined;

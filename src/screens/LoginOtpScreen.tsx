@@ -128,10 +128,10 @@ const LoginOtpScreen = ({ navigation, route }: Props) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.container}
-      >
+     <KeyboardAvoidingView
+  style={{ flex: 1 }}
+  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.topContainer}>
             <LoginHero />
