@@ -25,27 +25,50 @@ const LoginEmailScreen = ({ navigation }: Props) => {
   const [agreed, setAgreed] = useState(false);
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
-  const handleContinue = async () => {
-    if (!isValidEmail || !agreed) return;
-    setLoading(true);
-    setMessage(null);
-    try {
-      const resp: any = await Post('user/send-otp', { email: email.trim() });
-      const code = resp?.otp || resp?.data?.otp;
-      console.log("OTP:", code);
-      setMessage('OTP sent to your email.');
-      navigation.navigate('LoginOtp', {
-        from: 'email',
-        contact: email.trim(),
-        otpHint: code ? `OTP: ${code}` : undefined,
-      });
-    } catch (error: any) {
-      console.log('Error ', error);
-      setMessage(error?.message || 'Unable to send OTP.');
-    } finally {
-      setLoading(false);
-    }
-  };
+import { Alert } from 'react-native';
+
+const handleContinue = async () => {
+  if (!isValidEmail || !agreed) return;
+
+  setLoading(true);
+  setMessage(null);
+
+  try {
+    const resp: any = await Post('user/send-otp', {
+      email: email.trim(),
+    });
+
+    console.log('Login Response:', resp);
+
+    Alert.alert(
+      'API Response',
+      JSON.stringify(resp, null, 2)
+    );
+
+    const code = resp?.otp || resp?.data?.otp;
+
+    console.log('OTP:', code);
+
+    setMessage('OTP sent to your email.');
+
+    navigation.navigate('LoginOtp', {
+      from: 'email',
+      contact: email.trim(),
+      otpHint: code ? `OTP: ${code}` : undefined,
+    });
+  } catch (error: any) {
+    console.log('Error:', error);
+
+    Alert.alert(
+      'API Error',
+      JSON.stringify(error, null, 2)
+    );
+
+    setMessage(error?.message || 'Unable to send OTP.');
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <SafeAreaView style={styles.safeArea}>
      <KeyboardAvoidingView
