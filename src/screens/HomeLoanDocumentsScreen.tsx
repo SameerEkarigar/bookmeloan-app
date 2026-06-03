@@ -1,4 +1,3 @@
-  
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -8,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Text,
-  TextInput,
   View,
   StyleSheet,
   ScrollView,
@@ -30,7 +28,6 @@ type DocumentKey =
   | 'propertyDetails'
   | 'salarySlip'
   | 'itrFiling';
-type NumberFieldKey = 'panNumber' | 'aadhaarNumber';
 
 type EmploymentProfile = 'salaried' | 'self-employed';
 type DocumentAsset = {
@@ -41,19 +38,14 @@ type DocumentAsset = {
   isRemote?: boolean;
 };
 
-const DOCUMENT_META: Record<
-  DocumentKey,
-  { label: string; apiField: string; numberField?: NumberFieldKey }
-> = {
+const DOCUMENT_META: Record<DocumentKey, { label: string; apiField: string }> = {
   panImage: {
     label: 'PAN Card',
     apiField: 'pan',
-    numberField: 'panNumber',
   },
   aadhaarImage: {
     label: 'Aadhaar Card',
     apiField: 'aadhaar',
-    numberField: 'aadhaarNumber',
   },
   bankStatement: {
     label: "6 Months' Bank Statement",
@@ -133,7 +125,7 @@ const toRemoteAsset = (uri: string): DocumentAsset => ({
   isRemote: true,
 });
 
-const UploadDocumentsScreen = ({ navigation, route }: Props) => {
+const UploadDocumentsScreen = ({ navigation }: Props) => {
   const [images, setImages] = useState<Record<DocumentKey, DocumentAsset | null>>({
     panImage: null,
     aadhaarImage: null,
@@ -142,12 +134,7 @@ const UploadDocumentsScreen = ({ navigation, route }: Props) => {
     salarySlip: null,
     itrFiling: null,
   });
-  
-  const [references, setReferences] = useState({
-    panNumber: '',
-    aadhaarNumber: '',
-  });
-  
+
   const [loanType, setLoanType] = useState<'Home Loan' | 'Personal Loan'>('Home Loan');
   const [employmentProfile, setEmploymentProfile] = useState<EmploymentProfile>('salaried');
   const [loading, setLoading] = useState(false);
@@ -155,75 +142,45 @@ const UploadDocumentsScreen = ({ navigation, route }: Props) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [targetDoc, setTargetDoc] = useState<DocumentKey | null>(null);
+useEffect(() => {
+  const loadExisting = async () => {
+    setFetching(true);
+    try {
+      // 1. Fetch data from your current user API
+      const response: any = await Fetch('user/get-current-user');
+      
+      // Handle instances where the payload is nested under '.data'
+      const kycData = response?.data || response;
 
-  const updateReference = (field: NumberFieldKey, value: string) => {
-    const nextValue =
-      field === 'panNumber'
-        ? value.toUpperCase().replace(/[^A-Z0-9]/g, '')
-        : value.replace(/\D/g, '');
+      if (kycData) {
+        // Automatically sync the UI tabs with server data
+        if (kycData.employmentType) {
+          setEmploymentProfile(getEmploymentProfile(kycData.employmentType));
+        }
+        if (kycData.loanType) {
+          setLoanType(kycData.loanType);
+        }
 
-    setReferences(prev => ({
-      ...prev,
-      [field]: nextValue,
-    }));
+        // 2. Check if documents exist and map them using your 'toRemoteAsset' helper
+        setImages(prev => ({
+          ...prev,
+          panImage: kycData.panUrl ? toRemoteAsset(kycData.panUrl) : prev.panImage,
+          aadhaarImage: kycData.aadhaarUrl ? toRemoteAsset(kycData.aadhaarUrl) : prev.aadhaarImage,
+          bankStatement: kycData.bankStatementUrl ? toRemoteAsset(kycData.bankStatementUrl) : prev.bankStatement,
+          propertyDetails: kycData.propertyDetailsUrl ? toRemoteAsset(kycData.propertyDetailsUrl) : prev.propertyDetails,
+          salarySlip: kycData.salarySlipUrl ? toRemoteAsset(kycData.salarySlipUrl) : prev.salarySlip,
+          itrFiling: kycData.itrFilingUrl ? toRemoteAsset(kycData.itrFilingUrl) : prev.itrFiling,
+        }));
+      }
+    } catch (error) {
+      console.log('FETCH EXISTING DATA ERROR:', error);
+    } finally {
+      setFetching(false);
+    }
   };
 
-  useEffect(() => {
-    const loadExisting = async () => {
-      setFetching(true);
-      try {
-        const response: any = await Fetch('user/get-current-user');
-        const kycData = response?.data || response;
-
-        if (kycData) {
-          setEmploymentProfile(getEmploymentProfile(kycData.employmentType));
-
-          if (kycData.panUrl) {
-            setImages(prev => ({ ...prev, panImage: toRemoteAsset(kycData.panUrl) }));
-          }
-          if (kycData.panNumber) {
-            setReferences(prev => ({
-              ...prev,
-              panNumber: String(kycData.panNumber).toUpperCase(),
-            }));
-          }
-
-          if (kycData.aadhaarUrl) {
-            setImages(prev => ({ ...prev, aadhaarImage: toRemoteAsset(kycData.aadhaarUrl) }));
-          }
-          if (kycData.aadhaarNumber) {
-            setReferences(prev => ({
-              ...prev,
-              aadhaarNumber: String(kycData.aadhaarNumber).replace(/\D/g, '').slice(0, 12),
-            }));
-          }
-
-          if (kycData.bankStatementUrl) {
-            setImages(prev => ({ ...prev, bankStatement: toRemoteAsset(kycData.bankStatementUrl) }));
-          }
-
-          if (kycData.propertyDetailsUrl) {
-            setImages(prev => ({ ...prev, propertyDetails: toRemoteAsset(kycData.propertyDetailsUrl) }));
-          }
-
-          if (kycData.salarySlipUrl) {
-            setImages(prev => ({ ...prev, salarySlip: toRemoteAsset(kycData.salarySlipUrl) }));
-          }
-
-          if (kycData.itrFilingUrl) {
-            setImages(prev => ({ ...prev, itrFiling: toRemoteAsset(kycData.itrFilingUrl) }));
-          }
-        }
-      } catch (error) {
-        console.log('FETCH EXISTING DATA ERROR:', error);
-      } finally {
-        setFetching(false);
-      }
-    };
-
-    loadExisting();
-  }, []);
-
+  loadExisting();
+}, []);
   const handleProfileSwitch = (profile: EmploymentProfile) => {
     setEmploymentProfile(profile);
     setMessage(null);
@@ -297,10 +254,7 @@ const UploadDocumentsScreen = ({ navigation, route }: Props) => {
       ? SELF_EMPLOYED_REQUIRED_DOCS
       : EMPLOYED_REQUIRED_DOCS;
 
-  const allFilled =
-    requiredDocKeys.every(key => Boolean(images[key])) &&
-    Boolean(references.panNumber.trim()) &&
-    Boolean(references.aadhaarNumber.trim());
+  const allFilled = requiredDocKeys.every(key => Boolean(images[key]));
 
   const handleUpload = async () => {
     if (!allFilled) {
@@ -319,14 +273,18 @@ const UploadDocumentsScreen = ({ navigation, route }: Props) => {
 
       const appendFile = (key: DocumentKey) => {
         const doc = images[key];
-        if (!doc || doc.isRemote) return;
+        if (!doc) return;
 
         const apiField = DOCUMENT_META[key].apiField;
-        formData.append(apiField, {
-          uri: doc.uri,
-          name: doc.name || `${key}.jpg`,
-          type: doc.type || 'image/jpeg',
-        } as any);
+        if (!doc.isRemote) {
+          formData.append(apiField, {
+            uri: doc.uri,
+            name: doc.name || `${key}.jpg`,
+            type: doc.type || 'image/jpeg',
+          } as any);
+        } else {
+          formData.append(`${apiField}Url`, doc.uri);
+        }
       };
 
       requiredDocKeys.forEach(appendFile);
@@ -468,57 +426,47 @@ const UploadDocumentsScreen = ({ navigation, route }: Props) => {
                 </Text>
               </View>
 
-              {requiredDocKeys.map(key => (
-                <View key={key} style={styles.inputContainer}>
-                  {DOCUMENT_META[key].numberField && (
-                    <View style={styles.inputRow}>
-                      <TextInput
-                        value={references[DOCUMENT_META[key].numberField as NumberFieldKey]}
-                        onChangeText={value =>
-                          updateReference(
-                            DOCUMENT_META[key].numberField as NumberFieldKey,
-                            value,
-                          )
-                        }
-                        placeholder={`${DOCUMENT_META[key].label} number`}
-                        placeholderTextColor="#9CA3AF"
-                        style={styles.input}
-                      />
-                    </View>
-                  )}
-
-                  <TouchableOpacity
-                    style={styles.uploadRow}
-                    onPress={() => openPicker(key)}
-                  >
-                    <View style={styles.uploadIcon}>
-                      <Icon name="upload-cloud" size={18} color="#00BE99" />
-                    </View>
-
-                    <Text style={styles.uploadLabel}>
-                      {images[key]
-                        ? `${DOCUMENT_META[key].label} uploaded`
-                        : `Upload ${DOCUMENT_META[key].label}`}
-                    </Text>
-
-                    <Icon name="chevron-right" size={18} color="#94A3B8" />
-                  </TouchableOpacity>
-
-                  {images[key] &&
-                    (images[key]?.type === 'application/pdf' ? (
-                      <View style={styles.pdfPreview}>
-                        <Icon name="file-text" size={18} color="#0F172A" />
-                        <Text style={styles.pdfName}>{images[key]?.name}</Text>
-                      </View>
-                    ) : (
-                      <Image
-                        resizeMode="contain"
-                        style={styles.preview}
-                        source={{ uri: images[key]?.uri }}
-                      />
-                    ))}
+              {fetching ? (
+                <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+                  <ActivityIndicator color="#00BE99" size="large" />
+                  <Text style={[styles.ruleText, { marginTop: 8, color: '#64748B' }]}>Loading uploaded documents...</Text>
                 </View>
-              ))}
+              ) : (
+                requiredDocKeys.map(key => (
+                  <View key={key} style={styles.inputContainer}>
+                    <TouchableOpacity
+                      style={styles.uploadRow}
+                      onPress={() => openPicker(key)}
+                    >
+                      <View style={styles.uploadIcon}>
+                        <Icon name={images[key] ? "check" : "upload-cloud"} size={18} color="#00BE99" />
+                      </View>
+
+                      <Text style={styles.uploadLabel}>
+                        {images[key]
+                          ? `${DOCUMENT_META[key].label} uploaded`
+                          : `Upload ${DOCUMENT_META[key].label}`}
+                      </Text>
+
+                      <Icon name="chevron-right" size={18} color="#94A3B8" />
+                    </TouchableOpacity>
+
+                    {images[key] &&
+                      (images[key]?.type === 'application/pdf' ? (
+                        <View style={styles.pdfPreview}>
+                          <Icon name="file-text" size={18} color="#0F172A" />
+                          <Text style={styles.pdfName} numberOfLines={1}>{images[key]?.name}</Text>
+                        </View>
+                      ) : (
+                        <Image
+                          resizeMode="contain"
+                          style={styles.preview}
+                          source={{ uri: images[key]?.uri }}
+                        />
+                      ))}
+                  </View>
+                ))
+              )}
 
               {message && !modalVisible && <Text style={styles.message}>{message}</Text>}
             </View>
@@ -715,21 +663,6 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     marginBottom: 18,
-  },
-  inputRow: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F8FAFC',
-  },
-  input: {
-    flex: 1,
-    fontSize: 14,
-    color: '#0F172A',
   },
   uploadRow: {
     marginTop: 10,
