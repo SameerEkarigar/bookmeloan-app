@@ -1,4 +1,4 @@
-
+  
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -47,12 +47,12 @@ const DOCUMENT_META: Record<
 > = {
   panImage: {
     label: 'PAN Card',
-    apiField: 'panImage',
+    apiField: 'pan',
     numberField: 'panNumber',
   },
   aadhaarImage: {
     label: 'Aadhaar Card',
-    apiField: 'aadhaarImage',
+    apiField: 'aadhaar',
     numberField: 'aadhaarNumber',
   },
   bankStatement: {
@@ -133,7 +133,7 @@ const toRemoteAsset = (uri: string): DocumentAsset => ({
   isRemote: true,
 });
 
-const UploadDocumentsScreen = ({ navigation }: Props) => {
+const UploadDocumentsScreen = ({ navigation, route }: Props) => {
   const [images, setImages] = useState<Record<DocumentKey, DocumentAsset | null>>({
     panImage: null,
     aadhaarImage: null,
@@ -148,6 +148,7 @@ const UploadDocumentsScreen = ({ navigation }: Props) => {
     aadhaarNumber: '',
   });
   
+  const [loanType, setLoanType] = useState<'Home Loan' | 'Personal Loan'>('Home Loan');
   const [employmentProfile, setEmploymentProfile] = useState<EmploymentProfile>('salaried');
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
@@ -171,50 +172,50 @@ const UploadDocumentsScreen = ({ navigation }: Props) => {
     const loadExisting = async () => {
       setFetching(true);
       try {
-        const data: any = await Fetch('user/get-current-user');
-        const user = data?.data || data;
+        const response: any = await Fetch('user/get-current-user');
+        const kycData = response?.data || response;
 
-        setEmploymentProfile(
-          getEmploymentProfile(user?.professionalDetails?.employmentType),
-        );
+        if (kycData) {
+          setEmploymentProfile(getEmploymentProfile(kycData.employmentType));
 
-        if (user?.kyc) {
-          if (user.kyc.pan?.url) {
-            setImages(prev => ({ ...prev, panImage: toRemoteAsset(user.kyc.pan.url) }));
+          if (kycData.panUrl) {
+            setImages(prev => ({ ...prev, panImage: toRemoteAsset(kycData.panUrl) }));
+          }
+          if (kycData.panNumber) {
             setReferences(prev => ({
               ...prev,
-              panNumber: String(user.kyc.pan.number || prev.panNumber).toUpperCase(),
+              panNumber: String(kycData.panNumber).toUpperCase(),
             }));
           }
 
-          if (user.kyc.aadhaar?.url) {
-            setImages(prev => ({ ...prev, aadhaarImage: toRemoteAsset(user.kyc.aadhaar.url) }));
+          if (kycData.aadhaarUrl) {
+            setImages(prev => ({ ...prev, aadhaarImage: toRemoteAsset(kycData.aadhaarUrl) }));
+          }
+          if (kycData.aadhaarNumber) {
             setReferences(prev => ({
               ...prev,
-              aadhaarNumber: String(user.kyc.aadhaar.number || prev.aadhaarNumber)
-                .replace(/\D/g, '')
-                .slice(0, 12),
+              aadhaarNumber: String(kycData.aadhaarNumber).replace(/\D/g, '').slice(0, 12),
             }));
           }
 
-          if (user.kyc.bankStatement?.url) {
-            setImages(prev => ({ ...prev, bankStatement: toRemoteAsset(user.kyc.bankStatement.url) }));
+          if (kycData.bankStatementUrl) {
+            setImages(prev => ({ ...prev, bankStatement: toRemoteAsset(kycData.bankStatementUrl) }));
           }
 
-          if (user.kyc.propertyDetails?.url) {
-            setImages(prev => ({ ...prev, propertyDetails: toRemoteAsset(user.kyc.propertyDetails.url) }));
+          if (kycData.propertyDetailsUrl) {
+            setImages(prev => ({ ...prev, propertyDetails: toRemoteAsset(kycData.propertyDetailsUrl) }));
           }
 
-          if (user.kyc.salarySlip?.url) {
-            setImages(prev => ({ ...prev, salarySlip: toRemoteAsset(user.kyc.salarySlip.url) }));
+          if (kycData.salarySlipUrl) {
+            setImages(prev => ({ ...prev, salarySlip: toRemoteAsset(kycData.salarySlipUrl) }));
           }
 
-          if (user.kyc.itrFiling?.url) {
-            setImages(prev => ({ ...prev, itrFiling: toRemoteAsset(user.kyc.itrFiling.url) }));
+          if (kycData.itrFilingUrl) {
+            setImages(prev => ({ ...prev, itrFiling: toRemoteAsset(kycData.itrFilingUrl) }));
           }
         }
-      } catch {
-        // ignore fetch errors
+      } catch (error) {
+        console.log('FETCH EXISTING DATA ERROR:', error);
       } finally {
         setFetching(false);
       }
@@ -226,7 +227,6 @@ const UploadDocumentsScreen = ({ navigation }: Props) => {
   const handleProfileSwitch = (profile: EmploymentProfile) => {
     setEmploymentProfile(profile);
     setMessage(null);
-    // Clear type-specific documents when shifting tabs to reset context validation
     setImages(prev => ({
       ...prev,
       salarySlip: null,
@@ -302,73 +302,53 @@ const UploadDocumentsScreen = ({ navigation }: Props) => {
     Boolean(references.panNumber.trim()) &&
     Boolean(references.aadhaarNumber.trim());
 
-const handleUpload = async () => {
-  if (!allFilled) {
-    setMessage('Please upload all required documents before continuing.');
-    return;
-  }
-
-  const normalizedPan = references.panNumber?.trim().toUpperCase();
-  const normalizedAadhaar = references.aadhaarNumber?.replace(/\D/g, '');
-
-  setLoading(true);
-  setMessage(null);
-
-  try {
-    const formData = new FormData();
-
-    formData.append('employmentType', employmentProfile);
-
-    const appendFile = (key: DocumentKey) => {
-      const doc = images[key];
-
-      if (!doc || doc.isRemote) return;
-
-      const apiField = DOCUMENT_META[key].apiField;
-
-      formData.append(apiField, {
-        uri: doc.uri,
-        name: doc.name || `${key}.jpg`,
-        type: doc.type || 'image/jpeg',
-      } as any);
-    };
-
-    requiredDocKeys.forEach(appendFile);
-
-    if (normalizedPan) {
-      formData.append('panNumber', normalizedPan);
+  const handleUpload = async () => {
+    if (!allFilled) {
+      setMessage('Please upload all required documents before continuing.');
+      return;
     }
 
-    if (normalizedAadhaar) {
-      formData.append('aadhaarNumber', normalizedAadhaar);
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      const formData = new FormData();
+      
+      formData.append('employmentType', employmentProfile);
+      formData.append('loanType', loanType);
+
+      const appendFile = (key: DocumentKey) => {
+        const doc = images[key];
+        if (!doc || doc.isRemote) return;
+
+        const apiField = DOCUMENT_META[key].apiField;
+        formData.append(apiField, {
+          uri: doc.uri,
+          name: doc.name || `${key}.jpg`,
+          type: doc.type || 'image/jpeg',
+        } as any);
+      };
+
+      requiredDocKeys.forEach(appendFile);
+
+      await Post('user/upload-kyc-docs', formData, 30000);
+
+      setMessage('Your documents uploaded successfully. Our team will contact you soon.');
+      setTargetDoc(null); 
+      setModalVisible(true);
+
+    } catch (error: any) {
+      console.log('UPLOAD ERROR:', error);
+      setMessage(
+        error?.response?.data?.message ||
+        error?.message ||
+        'Unable to upload documents.'
+      );
+    } finally {
+      setLoading(false);
     }
+  };
 
-    console.log('===== FORM DATA =====');
-    console.log((formData as any)._parts);
-
-    const response: any = await Post(
-      'user/upload-kyc-docs',
-      formData,
-      30000,
-    );
-
-    console.log('API RESPONSE:', response);
-
-    setMessage(response?.message || 'Documents uploaded successfully.');
-    navigation.navigate('KycVerification');
-
-  } catch (error: any) {
-    console.log('UPLOAD ERROR:', error);
-
-    setMessage(
-      error?.response?.data?.message ||
-      error?.message ||
-      'Unable to upload documents.'
-    );
-  } finally {
-    setLoading(false);
-  }
-};
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.root}>
@@ -406,7 +386,44 @@ const handleUpload = async () => {
             </View>
 
             <View style={styles.formCard}>
-              {/* Profile Toggle Tabs */}
+              
+              <Text style={[styles.ruleTitle, { marginBottom: 8, marginTop: 4 }]}>Select Loan Type</Text>
+              <View style={styles.tabContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.tab,
+                    loanType === 'Home Loan' && styles.activeTab,
+                  ]}
+                  onPress={() => setLoanType('Home Loan')}
+                >
+                  <Text
+                    style={[
+                      styles.tabText,
+                      loanType === 'Home Loan' && styles.activeTabText,
+                    ]}
+                  >
+                    Home Loan
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.tab,
+                    loanType === 'Personal Loan' && styles.activeTab,
+                  ]}
+                  onPress={() => setLoanType('Personal Loan')}
+                >
+                  <Text
+                    style={[
+                      styles.tabText,
+                      loanType === 'Personal Loan' && styles.activeTabText,
+                    ]}
+                  >
+                    Personal Loan
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={[styles.ruleTitle, { marginBottom: 8 }]}>Select Employment Type</Text>
               <View style={styles.tabContainer}>
                 <TouchableOpacity
                   style={[
@@ -503,7 +520,7 @@ const handleUpload = async () => {
                 </View>
               ))}
 
-              {message && <Text style={styles.message}>{message}</Text>}
+              {message && !modalVisible && <Text style={styles.message}>{message}</Text>}
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -529,19 +546,42 @@ const handleUpload = async () => {
       <Modal animationType="fade" transparent visible={modalVisible}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Upload Document</Text>
-            <Text style={styles.modalSubtitle}>Choose source</Text>
-            <Pressable style={styles.modalOption} onPress={pickFromGallery}>
-              <Text style={styles.modalOptionText}>Choose from Gallery</Text>
-            </Pressable>
-            <Pressable
-              style={styles.modalOption}
-              onPress={() => setModalVisible(false)}
-            >
-              <Text style={[styles.modalOptionText, styles.modalOptionTextCancel]}>
-                Cancel
-              </Text>
-            </Pressable>
+            {targetDoc ? (
+              <>
+                <Text style={styles.modalTitle}>Upload Document</Text>
+                <Text style={styles.modalSubtitle}>Choose source</Text>
+                <Pressable style={styles.modalOption} onPress={pickFromGallery}>
+                  <Text style={styles.modalOptionText}>Choose from Gallery</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.modalOption}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Text style={[styles.modalOptionText, styles.modalOptionTextCancel]}>
+                    Cancel
+                  </Text>
+                </Pressable>
+              </>
+            ) : (
+              <View style={{ alignItems: 'center', paddingVertical: 16 }}>
+                <View style={[styles.uploadIcon, { width: 56, height: 56, borderRadius: 28, marginBottom: 16, marginRight: 0 }]}>
+                  <Icon name="check-circle" size={32} color="#00BE99" />
+                </View>
+                <Text style={[styles.modalTitle, { textAlign: 'center' }]}>Upload Successful</Text>
+                <Text style={[styles.modalSubtitle, { textAlign: 'center', marginBottom: 24, paddingHorizontal: 10, color: '#475569' }]}>
+                  {message}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.button, { width: '100%' }]}
+                  onPress={() => {
+                    setModalVisible(false);
+                    navigation.navigate('Home');
+                  }}
+                >
+                  <Text style={styles.buttonText}>Okay</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
@@ -743,7 +783,7 @@ const styles = StyleSheet.create({
   },
   message: {
     marginTop: 4,
-    color: '#065F46',
+    color: '#E11D48',
     fontWeight: '600',
   },
   button: {
@@ -775,6 +815,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginBottom: 8,
     fontWeight: '700',
+    color: '#0F172A',
   },
   modalSubtitle: {
     color: '#64748B',
